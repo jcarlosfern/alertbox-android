@@ -1,5 +1,9 @@
 package app.alertbox.io.ui.screens
 
+import android.graphics.Bitmap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -51,17 +56,23 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.navigation.NavHostController
 import app.alertbox.io.core.model.PreferencesUpdate
 import app.alertbox.io.core.model.ProfileUpdate
@@ -70,11 +81,14 @@ import app.alertbox.io.core.model.TravelMode
 import app.alertbox.io.ui.AppUiState
 import app.alertbox.io.ui.AppViewModel
 import app.alertbox.io.ui.components.AlertCard
+import app.alertbox.io.ui.components.AvatarCropDialog
 import app.alertbox.io.ui.components.BrandMark
 import app.alertbox.io.ui.components.OrganizationAvatar
+import app.alertbox.io.ui.components.loadAvatarBitmap
 import app.alertbox.io.ui.theme.AlertOrange
 import java.util.Locale
 import java.util.TimeZone
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
@@ -342,13 +356,24 @@ fun LanguageScreen(state: AppUiState, nav: NavHostController, viewModel: AppView
 @Composable
 fun PersonalDataScreen(state: AppUiState, nav: NavHostController, viewModel: AppViewModel) {
     val profile = state.profile
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var firstName by rememberSaveable(profile) { mutableStateOf(profile?.firstName.orEmpty()) }
     var lastName by rememberSaveable(profile) { mutableStateOf(profile?.lastName.orEmpty()) }
     var city by rememberSaveable(profile) { mutableStateOf(profile?.city.orEmpty()) }
     var countryCode by rememberSaveable(profile) { mutableStateOf(profile?.countryCode.orEmpty()) }
     var birthDate by rememberSaveable(profile) { mutableStateOf(profile?.birthDate.orEmpty()) }
     var gender by rememberSaveable(profile) { mutableStateOf(profile?.gender ?: "prefer_not_to_say") }
+    var cropBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var avatarPreview by remember { mutableStateOf<Bitmap?>(null) }
+    var avatarBytes by remember { mutableStateOf<ByteArray?>(null) }
     var countryMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) scope.launch {
+            val bitmap = loadAvatarBitmap(context, uri)
+            if (bitmap == null) viewModel.showError("No se pudo leer la imagen seleccionada.") else cropBitmap = bitmap
+        }
+    }
     val countries = remember {
         Locale.getISOCountries().map { code ->
             code to Locale.Builder().setRegion(code).build().getDisplayCountry(Locale.getDefault())
@@ -360,6 +385,30 @@ fun PersonalDataScreen(state: AppUiState, nav: NavHostController, viewModel: App
             modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            AlertCard {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    if (avatarPreview != null) {
+                        Image(
+                            bitmap = requireNotNull(avatarPreview).asImageBitmap(),
+                            contentDescription = "Foto de perfil seleccionada",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(82.dp).clip(RoundedCornerShape(28.dp)),
+                        )
+                    } else {
+                        OrganizationAvatar(profile?.greetingName ?: "AB", profile?.avatarUrl, 82)
+                    }
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        OutlinedButton(onClick = { photoPicker.launch("image/*") }) {
+                            Text("Elegir y recortar foto")
+                        }
+                        Text(
+                            "JPG, PNG o WebP. Recomendado: 600×600 px (mínimo 256×256 px). Se guardará en Cloudflare R2.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
             Text("Tu correo se gestiona desde Firebase Authentication y no puede cambiarse desde esta pantalla.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(firstName, { firstName = it }, label = { Text("Nombre") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
@@ -440,6 +489,7 @@ fun PersonalDataScreen(state: AppUiState, nav: NavHostController, viewModel: App
                             timezone = TimeZone.getDefault().id,
                             onboardingComplete = true,
                         ),
+                        avatarBytes,
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -447,6 +497,17 @@ fun PersonalDataScreen(state: AppUiState, nav: NavHostController, viewModel: App
                 colors = ButtonDefaults.buttonColors(containerColor = AlertOrange),
             ) { Text("Guardar datos") }
         }
+    }
+    cropBitmap?.let { bitmap ->
+        AvatarCropDialog(
+            bitmap = bitmap,
+            onDismiss = { cropBitmap = null },
+            onApply = { data, preview ->
+                avatarBytes = data
+                avatarPreview = preview
+                cropBitmap = null
+            },
+        )
     }
 }
 

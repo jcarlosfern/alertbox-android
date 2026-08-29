@@ -12,6 +12,7 @@ import app.alertbox.io.core.model.LoyaltyProgram
 import app.alertbox.io.core.model.Organization
 import app.alertbox.io.core.model.PreferencesUpdate
 import app.alertbox.io.core.model.ProfileUpdate
+import app.alertbox.io.core.model.AvatarUpdate
 import app.alertbox.io.core.model.Promotion
 import app.alertbox.io.core.model.PromotionRedemption
 import app.alertbox.io.core.model.Redemption
@@ -24,6 +25,9 @@ import app.alertbox.io.core.network.AlertBoxApi
 import app.alertbox.io.core.network.unwrap
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.tasks.await
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.Locale
 import java.util.TimeZone
 
@@ -58,6 +62,13 @@ class AlertBoxRepository(
     suspend fun syncAccount(): UserProfile = api.syncAccount(EmptyRequest).unwrap()
     suspend fun profile(): UserProfile = api.profile().unwrap()
     suspend fun updateProfile(update: ProfileUpdate): UserProfile = api.updateProfile(update).unwrap()
+    suspend fun updateAvatar(image: ByteArray): UserProfile {
+        val imageBody = image.toRequestBody("image/jpeg".toMediaType())
+        val file = MultipartBody.Part.createFormData("file", "user-avatar.jpg", imageBody)
+        val purpose = "avatar".toRequestBody("text/plain".toMediaType())
+        val asset = api.uploadMedia(purpose, file).unwrap()
+        return api.updateAvatar(AvatarUpdate(asset.url)).unwrap()
+    }
     suspend fun deleteProfile() = api.deleteProfile().unwrap()
     suspend fun updatePreferences(update: PreferencesUpdate): UserProfile = api.updatePreferences(update).unwrap()
     suspend fun searchCities(query: String, language: String): List<CitySuggestion> =

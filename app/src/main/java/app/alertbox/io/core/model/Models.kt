@@ -84,6 +84,10 @@ data class ProfileUpdate(
     val onboardingComplete: Boolean,
 )
 
+data class AvatarUpdate(val avatarUrl: String)
+
+data class MediaAsset(val url: String)
+
 data class CitySuggestion(
     val id: String,
     val name: String,

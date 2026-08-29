@@ -1,6 +1,8 @@
 package app.alertbox.io.core.network
 
 import app.alertbox.io.core.model.ApiEnvelope
+import app.alertbox.io.core.model.AvatarUpdate
+import app.alertbox.io.core.model.MediaAsset
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonSyntaxException
 import org.junit.Assert.assertFalse
@@ -38,5 +40,12 @@ class ApiParsingTest {
         }
         assertTrue(error.code == "forbidden")
         assertTrue(error.message == "No autorizado")
+    }
+
+    @Test
+    fun `serializes avatar update and decodes uploaded media URL`() {
+        assertTrue(gson.toJson(AvatarUpdate("https://images.example/avatar.jpg")).contains("avatarUrl"))
+        val asset = gson.fromJson("{\"url\":\"https://images.example/avatar.jpg\"}", MediaAsset::class.java)
+        assertTrue(asset.url.endsWith("avatar.jpg"))
     }
 }

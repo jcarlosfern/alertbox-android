@@ -127,8 +127,9 @@ class AppViewModel(private val app: AlertBoxApplication) : ViewModel() {
         refresh()
     }
 
-    fun updateProfile(update: ProfileUpdate) = launchWorking(success = "Datos personales guardados.") {
-        val profile = repository.updateProfile(update)
+    fun updateProfile(update: ProfileUpdate, avatar: ByteArray? = null) = launchWorking(success = "Datos personales guardados.") {
+        var profile = repository.updateProfile(update)
+        if (avatar != null) profile = repository.updateAvatar(avatar)
         _state.update { it.copy(profile = profile) }
     }
 

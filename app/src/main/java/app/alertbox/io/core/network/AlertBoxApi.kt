@@ -12,6 +12,8 @@ import app.alertbox.io.core.model.MutationResult
 import app.alertbox.io.core.model.Organization
 import app.alertbox.io.core.model.PreferencesUpdate
 import app.alertbox.io.core.model.ProfileUpdate
+import app.alertbox.io.core.model.AvatarUpdate
+import app.alertbox.io.core.model.MediaAsset
 import app.alertbox.io.core.model.Promotion
 import app.alertbox.io.core.model.PromotionRedemption
 import app.alertbox.io.core.model.Redemption
@@ -27,15 +29,23 @@ import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.HTTP
 import retrofit2.http.PATCH
+import retrofit2.http.Multipart
+import retrofit2.http.Part
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 
 interface AlertBoxApi {
     @POST("auth/sync") suspend fun syncAccount(@Body body: EmptyRequest = EmptyRequest): ApiEnvelope<UserProfile>
     @GET("me") suspend fun profile(): ApiEnvelope<UserProfile>
     @PATCH("me") suspend fun updateProfile(@Body body: ProfileUpdate): ApiEnvelope<UserProfile>
+    @PATCH("me") suspend fun updateAvatar(@Body body: AvatarUpdate): ApiEnvelope<UserProfile>
+    @Multipart
+    @POST("media/files")
+    suspend fun uploadMedia(@Part("purpose") purpose: RequestBody, @Part file: MultipartBody.Part): ApiEnvelope<MediaAsset>
     @DELETE("me") suspend fun deleteProfile(): ApiEnvelope<MutationResult>
     @PATCH("me/preferences") suspend fun updatePreferences(@Body body: PreferencesUpdate): ApiEnvelope<UserProfile>
     @GET("locations/cities")
