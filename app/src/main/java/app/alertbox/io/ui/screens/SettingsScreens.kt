@@ -1,6 +1,7 @@
 package app.alertbox.io.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -32,6 +33,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -47,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -102,7 +106,7 @@ fun SettingsScreen(
 
         SettingsGroup {
             SettingsItem(Icons.Default.Notifications, "Notificaciones", "Push, correo y horas de descanso") { nav.navigate(Routes.NOTIFICATION_SETTINGS) }
-            SettingsItem(Icons.Default.AccountCircle, "Datos personales", "Nombre, ciudad y fecha de nacimiento") { nav.navigate(Routes.PROFILE_SETTINGS) }
+            SettingsItem(Icons.Default.AccountCircle, "Datos personales", "Nombre, ubicación, fecha de nacimiento y género") { nav.navigate(Routes.PROFILE_SETTINGS) }
             SettingsItem(Icons.Default.Bookmark, "Guardados", "Avisos y promociones que conservas") { nav.navigate(Routes.SAVED) }
         }
         SettingsGroup {
@@ -343,6 +347,13 @@ fun PersonalDataScreen(state: AppUiState, nav: NavHostController, viewModel: App
     var city by rememberSaveable(profile) { mutableStateOf(profile?.city.orEmpty()) }
     var countryCode by rememberSaveable(profile) { mutableStateOf(profile?.countryCode.orEmpty()) }
     var birthDate by rememberSaveable(profile) { mutableStateOf(profile?.birthDate.orEmpty()) }
+    var gender by rememberSaveable(profile) { mutableStateOf(profile?.gender ?: "prefer_not_to_say") }
+    var countryMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    val countries = remember {
+        Locale.getISOCountries().map { code ->
+            code to Locale.Builder().setRegion(code).build().getDisplayCountry(Locale.getDefault())
+        }.sortedBy { it.second.lowercase(Locale.getDefault()) }
+    }
 
     Scaffold(topBar = { SimpleTopBar("Datos personales", nav) }) { padding ->
         Column(
@@ -361,6 +372,26 @@ fun PersonalDataScreen(state: AppUiState, nav: NavHostController, viewModel: App
                 onSelect = { suggestion -> city = suggestion.name; countryCode = suggestion.countryCode },
                 viewModel = viewModel,
             )
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = { countryMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+                    val selectedCountry = countries.firstOrNull { it.first == countryCode }?.second
+                    Text(selectedCountry ?: "Selecciona un país")
+                }
+                DropdownMenu(
+                    expanded = countryMenuExpanded,
+                    onDismissRequest = { countryMenuExpanded = false },
+                ) {
+                    countries.forEach { (code, name) ->
+                        DropdownMenuItem(
+                            text = { Text(name) },
+                            onClick = {
+                                countryCode = code
+                                countryMenuExpanded = false
+                            },
+                        )
+                    }
+                }
+            }
             OutlinedTextField(
                 birthDate,
                 { birthDate = it.take(10) },
@@ -369,6 +400,26 @@ fun PersonalDataScreen(state: AppUiState, nav: NavHostController, viewModel: App
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+            )
+            Text("Género", fontWeight = FontWeight.Bold)
+            listOf(
+                "prefer_not_to_say" to "Prefiero no decirlo",
+                "female" to "Mujer",
+                "male" to "Hombre",
+                "non_binary" to "No binario",
+                "other" to "Otro",
+            ).forEach { (value, label) ->
+                androidx.compose.material3.FilterChip(
+                    selected = gender == value,
+                    onClick = { gender = value },
+                    label = { Text(label) },
+                    leadingIcon = if (gender == value) ({ Icon(Icons.Default.Check, contentDescription = null) }) else null,
+                )
+            }
+            Text(
+                "La fecha de nacimiento y el género no se muestran públicamente.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Button(
                 onClick = {
@@ -383,7 +434,7 @@ fun PersonalDataScreen(state: AppUiState, nav: NavHostController, viewModel: App
                             displayName = "$firstName $lastName".trim(),
                             city = city.trim(),
                             countryCode = countryCode,
-                            gender = profile?.gender.orEmpty(),
+                            gender = gender,
                             birthDate = birthDate,
                             locale = profile?.locale ?: Locale.getDefault().toLanguageTag(),
                             timezone = TimeZone.getDefault().id,
