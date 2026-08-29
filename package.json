@@ -1,0 +1,11 @@
+{
+  "name": "alertbox-android",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "lint": "./gradlew lintDebug --console=plain",
+    "test": "./gradlew testDebugUnitTest --console=plain",
+    "build": "./gradlew assembleDebug --console=plain"
+  }
+}
+
