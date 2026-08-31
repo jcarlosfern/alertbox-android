@@ -1,6 +1,7 @@
 package app.alertbox.io.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,21 +77,31 @@ fun AlertCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.()
 }
 
 @Composable
-fun OrganizationAvatar(name: String, image: String?, size: Int = 48) {
-    if (!image.isNullOrBlank()) {
-        AsyncImage(
-            model = image,
-            contentDescription = "Logo de $name",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.size(size.dp).clip(RoundedCornerShape((size / 3).dp)),
-        )
-    } else {
-        Box(
-            modifier = Modifier.size(size.dp).clip(RoundedCornerShape((size / 3).dp))
-                .background(AlertOrange.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(name.take(2).uppercase(), color = AlertOrange, fontWeight = FontWeight.Black)
+fun OrganizationAvatar(name: String, image: String?, size: Int = 48, crop: Boolean = false) {
+    var loaded by remember(image) { mutableStateOf(false) }
+    val shape = RoundedCornerShape((size / 4).dp)
+    Box(
+        modifier = Modifier.size(size.dp).clip(shape).background(Color.White)
+            .border(1.dp, Color(0xFFE5E7EB), shape),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (!loaded) {
+            Text(
+                name.trim().split(Regex("\\s+")).take(2).mapNotNull { it.firstOrNull() }
+                    .joinToString("").uppercase().ifEmpty { "AB" },
+                color = AlertOrange, fontWeight = FontWeight.Black,
+                fontSize = (size * 0.3f).sp,
+            )
+        }
+        if (!image.isNullOrBlank()) {
+            AsyncImage(
+                model = image.trim(),
+                contentDescription = "Imagen de $name",
+                contentScale = if (crop) ContentScale.Crop else ContentScale.Fit,
+                onSuccess = { loaded = true },
+                onError = { loaded = false },
+                modifier = Modifier.size(size.dp).padding(if (crop) 0.dp else (size * 0.1f).dp),
+            )
         }
     }
 }

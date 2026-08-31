@@ -109,7 +109,7 @@ fun SettingsScreen(
         Text("Ajustes", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
         AlertCard {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                OrganizationAvatar(profile?.greetingName ?: "AB", profile?.avatarUrl, 58)
+                OrganizationAvatar(profile?.greetingName ?: "AB", profile?.avatarUrl, 58, crop = true)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(profile?.displayName ?: profile?.greetingName ?: "Mi cuenta", fontWeight = FontWeight.Bold)
                     Text(profile?.email.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -395,7 +395,7 @@ fun PersonalDataScreen(state: AppUiState, nav: NavHostController, viewModel: App
                             modifier = Modifier.size(82.dp).clip(RoundedCornerShape(28.dp)),
                         )
                     } else {
-                        OrganizationAvatar(profile?.greetingName ?: "AB", profile?.avatarUrl, 82)
+                        OrganizationAvatar(profile?.greetingName ?: "AB", profile?.avatarUrl, 82, crop = true)
                     }
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         OutlinedButton(onClick = { photoPicker.launch("image/*") }) {

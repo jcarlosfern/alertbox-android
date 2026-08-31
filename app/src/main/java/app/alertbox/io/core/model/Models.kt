@@ -132,7 +132,34 @@ data class Organization(
     val followers: Int? = null,
     val followed: Boolean = false,
     val channels: List<Channel>? = null,
+    val brand: OrganizationBrand? = null,
+    val showFollowerCount: Boolean? = null,
+) {
+    val displayLogoUrl: String?
+        get() = logoUrl.nonBlank() ?: brand?.logoUrl.nonBlank()
+
+    val categoryLabel: String
+        get() = category.nonBlank()?.replace('_', ' ') ?: "Organización"
+
+    val locationLabel: String?
+        get() = listOfNotNull(city.nonBlank(), region.nonBlank()).distinct()
+            .joinToString(", ").nonBlank()
+
+    val fullAddress: String?
+        get() = listOfNotNull(address.nonBlank(), city.nonBlank(), region.nonBlank(), countryCode.nonBlank())
+            .distinct().joinToString(", ").nonBlank()
+
+    val visibleFollowers: Int?
+        get() = followers?.takeIf { showFollowerCount == true && it >= 0 }
+}
+
+data class OrganizationBrand(
+    val logoUrl: String? = null,
+    val primaryColor: String? = null,
+    val accentColor: String? = null,
 )
+
+fun String?.nonBlank(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
 
 data class Channel(
     val id: String,

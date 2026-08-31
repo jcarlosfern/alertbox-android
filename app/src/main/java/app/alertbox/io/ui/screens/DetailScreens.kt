@@ -3,6 +3,7 @@ package app.alertbox.io.ui.screens
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -24,6 +26,11 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -51,6 +58,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -62,6 +70,7 @@ import app.alertbox.io.core.model.AlertNotification
 import app.alertbox.io.core.model.Giveaway
 import app.alertbox.io.core.model.LoyaltyProgram
 import app.alertbox.io.core.model.Organization
+import app.alertbox.io.core.model.nonBlank
 import app.alertbox.io.core.model.Promotion
 import app.alertbox.io.core.model.SavedItem
 import app.alertbox.io.core.model.Survey
@@ -73,6 +82,7 @@ import app.alertbox.io.ui.components.CoverImage
 import app.alertbox.io.ui.components.EmptyState
 import app.alertbox.io.ui.components.LoadingState
 import app.alertbox.io.ui.components.OrganizationAvatar
+import app.alertbox.io.ui.components.OrganizationIdentityCard
 import app.alertbox.io.ui.components.SectionTitle
 import app.alertbox.io.ui.components.TwoLineText
 import app.alertbox.io.ui.theme.AlertOrange
@@ -273,26 +283,38 @@ private fun QuestionCard(question: SurveyQuestion, answers: MutableMap<String, A
 
 @Composable
 fun OrganizationDetailScreen(id: String, nav: NavHostController, viewModel: AppViewModel) {
-    var item by remember { mutableStateOf<Organization?>(null) }
-    LaunchedEffect(id) { item = viewModel.loadOrganization(id) }
-    DetailScaffold("Organización", nav, item) { organization ->
-        CoverImage(organization.coverUrl, organization.name, 190)
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            OrganizationAvatar(organization.name, organization.logoUrl, 82)
-            Text(organization.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
-            Text(organization.category.orEmpty(), color = AlertOrange)
+    var item by remember(id) { mutableStateOf<Organization?>(null) }
+    var loading by remember(id) { mutableStateOf(true) }
+    var attempt by remember(id) { mutableStateOf(0) }
+    LaunchedEffect(id, attempt) {
+        loading = true
+        item = viewModel.loadOrganization(id)
+        loading = false
+    }
+    if (!loading && item == null) {
+        Scaffold(topBar = { SimpleTopBar("Organización", nav) }) { padding ->
+            Box(Modifier.padding(padding)) {
+                EmptyState("🏢", "No disponible", "No se ha podido cargar esta organización.", "Reintentar") { attempt++ }
+            }
         }
+        return
+    }
+    DetailScaffold("Organización", nav, item) { organization ->
+        OrganizationIdentityCard(organization)
         Button(
             onClick = {
-                viewModel.setFollowing(organization.id, !organization.followed)
-                item = organization.copy(followed = !organization.followed)
+                viewModel.setFollowing(organization.id, !organization.followed) { item = it }
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = AlertOrange),
         ) { Text(if (organization.followed) "Siguiendo" else "Seguir organización") }
-        organization.description?.let { Text(it) }
+        organization.description.nonBlank()?.let {
+            AlertCard { Text("Sobre la empresa", fontWeight = FontWeight.Bold); Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+        OrganizationContact(organization)
         if (organization.followed) {
             SectionTitle("Canales", "Elige qué quieres recibir")
+            if (organization.channels.isNullOrEmpty()) AlertCard { Text("Esta organización aún no ha publicado canales.") }
             organization.channels.orEmpty().forEach { channel ->
                 var subscribed by remember(channel.id) { mutableStateOf(channel.subscribed) }
                 AlertCard {
@@ -306,8 +328,40 @@ fun OrganizationDetailScreen(id: String, nav: NavHostController, viewModel: AppV
                     }
                 }
             }
+        } else {
+            AlertCard { Text("Tú eliges qué recibir", fontWeight = FontWeight.Bold); Text("Sigue la organización para descubrir sus canales y recibir sus novedades.") }
         }
-        listOfNotNull(organization.city, organization.phone, organization.website).forEach { Text(it) }
+    }
+}
+
+@Composable
+private fun OrganizationContact(organization: Organization) {
+    val fields = listOfNotNull(
+        organization.legalName.nonBlank()?.let { Triple(Icons.Default.Business, "Razón social", it) },
+        organization.fullAddress?.let { Triple(Icons.Default.LocationOn, "Dirección", it) },
+        organization.contactEmail.nonBlank()?.let { Triple(Icons.Default.Email, "Correo electrónico", it) },
+        organization.phone.nonBlank()?.let { Triple(Icons.Default.Phone, "Teléfono", it) },
+        organization.website.nonBlank()?.let { Triple(Icons.Default.Language, "Sitio web", it) },
+    )
+    if (fields.isEmpty()) return
+    AlertCard {
+        Text("Información de contacto", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        SelectionContainer {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                fields.forEach { (icon, label, value) -> OrganizationContactRow(icon, label, value) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OrganizationContactRow(icon: ImageVector, label: String, value: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }
 

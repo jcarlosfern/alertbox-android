@@ -176,8 +176,9 @@ class AppViewModel(private val app: AlertBoxApplication) : ViewModel() {
         }
     }
 
-    fun setFollowing(id: String, followed: Boolean) = launchWorking {
+    fun setFollowing(id: String, followed: Boolean, onUpdated: (Organization) -> Unit = {}) = launchWorking {
         repository.setFollowing(id, followed)
+        onUpdated(repository.organization(id))
         refresh()
     }
 

@@ -73,6 +73,7 @@ import app.alertbox.io.ui.components.CoverImage
 import app.alertbox.io.ui.components.EmptyState
 import app.alertbox.io.ui.components.LoadingState
 import app.alertbox.io.ui.components.OrganizationAvatar
+import app.alertbox.io.ui.components.OrganizationIdentityCard
 import app.alertbox.io.ui.components.SectionTitle
 import app.alertbox.io.ui.components.TwoLineText
 import app.alertbox.io.ui.theme.AlertOrange
@@ -215,7 +216,12 @@ fun OrganizationsScreen(state: AppUiState, padding: PaddingValues, nav: NavHostC
         (!followedOnly || it.followed) && (query.isBlank() || it.name.contains(query, true) || it.category.orEmpty().contains(query, true))
     }
     Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-        Text("Organizaciones", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp))
+        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Organizaciones", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+            IconButton(onClick = { viewModel.refresh() }) {
+                Icon(Icons.Default.Refresh, contentDescription = "Actualizar empresas")
+            }
+        }
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
@@ -228,14 +234,8 @@ fun OrganizationsScreen(state: AppUiState, padding: PaddingValues, nav: NavHostC
         if (organizations.isEmpty()) EmptyState("🔎", "Sin resultados", "Prueba con otro nombre o muestra todas las organizaciones.")
         else LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(organizations, key = Organization::id) { organization ->
-                AlertCard(modifier = Modifier.clickable { nav.navigate(Routes.organization(organization.id)) }) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        OrganizationAvatar(organization.name, organization.logoUrl, 56)
-                        TwoLineText(organization.name, organization.category ?: organization.description, Modifier.padding(start = 12.dp).weight(1f))
-                        if (organization.followed) Icon(Icons.Default.Star, contentDescription = "Siguiendo", tint = AlertOrange)
-                        else Icon(Icons.Default.ChevronRight, contentDescription = null)
-                    }
-                }
+                OrganizationIdentityCard(organization, compact = true,
+                    modifier = Modifier.clickable { nav.navigate(Routes.organization(organization.id)) })
             }
         }
     }
