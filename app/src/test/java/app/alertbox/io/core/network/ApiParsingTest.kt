@@ -58,6 +58,15 @@ class ApiParsingTest {
     }
 
     @Test
+    fun `organization category is shown in Spanish for codes and legacy English names`() {
+        val organization = gson.fromJson("""{"id":"company","name":"Café Aroma","category":"food_drink"}""", Organization::class.java)
+
+        assertEquals("Alimentación y bebidas", organization.categoryLabel)
+        assertEquals("Salud y bienestar", organization.copy(category = "Health & Fitness").categoryLabel)
+        assertEquals("Restauración", organization.copy(category = "Restauración").categoryLabel)
+    }
+
+    @Test
     fun `brand colors decode CSS HSL and hex without accepting invalid values`() {
         val red = brandColor("0 100% 50%")!!
         assertEquals(1f, red.red, 0.001f)

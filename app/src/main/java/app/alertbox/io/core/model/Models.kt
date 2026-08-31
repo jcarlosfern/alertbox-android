@@ -1,5 +1,7 @@
 package app.alertbox.io.core.model
 
+import java.util.Locale
+
 data class ApiEnvelope<T>(
     val status: Int = 0,
     val data: T? = null,
@@ -139,7 +141,10 @@ data class Organization(
         get() = logoUrl.nonBlank() ?: brand?.logoUrl.nonBlank()
 
     val categoryLabel: String
-        get() = category.nonBlank()?.replace('_', ' ') ?: "Organización"
+        get() {
+            val value = category.nonBlank() ?: return "Organización"
+            return spanishCategoryNames[value.lowercase(Locale.ROOT)] ?: value.replace('_', ' ')
+        }
 
     val locationLabel: String?
         get() = listOfNotNull(city.nonBlank(), region.nonBlank()).distinct()
@@ -151,6 +156,45 @@ data class Organization(
 
     val visibleFollowers: Int?
         get() = followers?.takeIf { showFollowerCount == true && it >= 0 }
+
+    private companion object {
+        val spanishCategoryNames = mapOf(
+            "arts_culture" to "Arte y cultura",
+            "arts & culture" to "Arte y cultura",
+            "culture & arts" to "Arte y cultura",
+            "automotive" to "Automoción",
+            "beauty_personal_care" to "Belleza y cuidado personal",
+            "beauty & personal care" to "Belleza y cuidado personal",
+            "education" to "Educación",
+            "entertainment" to "Entretenimiento",
+            "events_conferences" to "Eventos y conferencias",
+            "events & conferences" to "Eventos y conferencias",
+            "financial_services" to "Servicios financieros",
+            "financial services" to "Servicios financieros",
+            "food_drink" to "Alimentación y bebidas",
+            "food & drink" to "Alimentación y bebidas",
+            "government_public_services" to "Administración y servicios públicos",
+            "government & public services" to "Administración y servicios públicos",
+            "health_fitness" to "Salud y bienestar",
+            "health & fitness" to "Salud y bienestar",
+            "hospitality_travel" to "Hostelería y turismo",
+            "hospitality & travel" to "Hostelería y turismo",
+            "home_services" to "Hogar y servicios",
+            "home & services" to "Hogar y servicios",
+            "nonprofit" to "Organizaciones sin ánimo de lucro",
+            "nonprofit organizations" to "Organizaciones sin ánimo de lucro",
+            "professional_services" to "Servicios profesionales",
+            "professional services" to "Servicios profesionales",
+            "retail" to "Comercio minorista",
+            "grocery & retail" to "Comercio minorista",
+            "sports_recreation" to "Deporte y ocio",
+            "sports & recreation" to "Deporte y ocio",
+            "technology" to "Tecnología",
+            "transportation" to "Transporte y movilidad",
+            "transportation & mobility" to "Transporte y movilidad",
+            "other" to "Otros",
+        )
+    }
 }
 
 data class OrganizationBrand(
