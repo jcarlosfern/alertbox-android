@@ -64,8 +64,8 @@ android {
         abortOnError = true
         checkReleaseBuilds = true
         warningsAsErrors = true
-        // AGP 8.13.2 recomienda Gradle 8.13 para compileSdk 36.
-        disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion")
+        // El runner de CI puede incluir SDK preliminares posteriores al target estable 36.
+        disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion", "OldTargetApi")
     }
 }
 
