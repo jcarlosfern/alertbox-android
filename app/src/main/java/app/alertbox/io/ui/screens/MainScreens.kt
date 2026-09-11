@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -189,19 +188,17 @@ fun InboxScreen(state: AppUiState, padding: PaddingValues, nav: NavHostControlle
 fun LoyaltyScreen(state: AppUiState, padding: PaddingValues, nav: NavHostController) {
     val programs = state.dashboard.loyalty
     Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-        Text("Fidelización", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, modifier = Modifier.padding(18.dp))
+        Text(
+            "Fidelización",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
+        )
         if (programs.isEmpty()) EmptyState("⭐", "Tus ventajas aparecerán aquí", "Sigue organizaciones con programas de puntos o sellos.")
-        else LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        else LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            item { LoyaltyOverview(programs) }
             items(programs, key = LoyaltyProgram::id) { program ->
-                AlertCard(modifier = Modifier.clickable { nav.navigate(Routes.loyalty(program.id)) }) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        OrganizationAvatar(program.organizationName, program.organizationLogo, 54)
-                        TwoLineText(program.name, program.organizationName, Modifier.padding(start = 12.dp).weight(1f))
-                        Icon(Icons.Default.ChevronRight, contentDescription = null)
-                    }
-                    Text("${program.points} puntos", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = AlertOrange)
-                    program.tier?.let { AssistChip(onClick = {}, label = { Text(it) }) }
-                }
+                LoyaltyProgramCard(program, onClick = { nav.navigate(Routes.loyalty(program.id)) })
             }
         }
     }

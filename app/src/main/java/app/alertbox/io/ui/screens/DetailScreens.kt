@@ -375,38 +375,50 @@ fun LoyaltyDetailScreen(id: String, nav: NavHostController, viewModel: AppViewMo
         savedRewardIds = viewModel.loadSaved().filter { it.itemType == "loyalty_reward" }.mapTo(mutableSetOf()) { it.itemId }
     }
     DetailScaffold("Programa", nav, item) { program ->
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            OrganizationAvatar(program.organizationName, program.organizationLogo, 80)
-            Text(program.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
-            Text("${program.points} puntos", color = AlertOrange, style = MaterialTheme.typography.titleLarge)
+        LoyaltyHero(program)
+        program.description?.takeIf(String::isNotBlank)?.let { description ->
+            AlertCard { Text(description, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        program.description?.let { Text(it) }
-        if (program.joined != true) Button(onClick = { viewModel.joinLoyalty(program.id); item = program.copy(joined = true) }, modifier = Modifier.fillMaxWidth()) { Text("Unirme al programa") }
-        SectionTitle("Recompensas")
-        program.rewards.orEmpty().forEach { reward ->
-            AlertCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TwoLineText(reward.title, reward.description, Modifier.weight(1f))
-                    IconButton(onClick = {
-                        val willSave = reward.id !in savedRewardIds
-                        savedRewardIds = if (willSave) savedRewardIds + reward.id else savedRewardIds - reward.id
-                        viewModel.setSaved("loyalty_reward", reward.id, willSave)
-                    }) {
-                        Icon(
-                            if (reward.id in savedRewardIds) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                            contentDescription = "Guardar recompensa",
-                        )
-                    }
-                }
-                Text("${reward.pointsRequired} puntos", color = AlertOrange, fontWeight = FontWeight.Bold)
-                OutlinedButton(
-                    onClick = { viewModel.redeemReward(reward.id) { code = it.code } },
-                    enabled = program.joined == true && program.points >= reward.pointsRequired && reward.active,
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("Canjear") }
+        if (program.joined != true) {
+            Button(
+                onClick = { viewModel.joinLoyalty(program.id); item = program.copy(joined = true) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = AlertOrange),
+            ) {
+                Icon(Icons.Default.Star, contentDescription = null)
+                Text("Unirme al programa", modifier = Modifier.padding(start = 8.dp))
             }
         }
-        program.terms?.let { AlertCard { Text("Condiciones", fontWeight = FontWeight.Bold); Text(it) } }
+        val availableRewards = program.rewards.orEmpty().count { reward -> reward.active && reward.pointsRequired <= program.points }
+        SectionTitle(
+            "Recompensas",
+            when {
+                program.joined != true -> "Únete para empezar a desbloquearlas"
+                availableRewards == 0 -> "Sigue sumando para conseguir la próxima"
+                availableRewards == 1 -> "Tienes 1 premio disponible"
+                else -> "Tienes $availableRewards premios disponibles"
+            },
+        )
+        program.rewards.orEmpty().forEach { reward ->
+            LoyaltyRewardCard(
+                program = program,
+                reward = reward,
+                saved = reward.id in savedRewardIds,
+                onSave = {
+                    val willSave = reward.id !in savedRewardIds
+                    savedRewardIds = if (willSave) savedRewardIds + reward.id else savedRewardIds - reward.id
+                    viewModel.setSaved("loyalty_reward", reward.id, willSave)
+                },
+                onRedeem = { viewModel.redeemReward(reward.id) { code = it.code } },
+            )
+        }
+        program.terms?.takeIf(String::isNotBlank)?.let { terms ->
+            AlertCard {
+                Text("Condiciones", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(terms, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         if (!program.history.isNullOrEmpty()) {
             SectionTitle("Actividad")
             program.history.orEmpty().forEach { transaction -> Text("${transaction.quantity} · ${transaction.note ?: transaction.type}") }
